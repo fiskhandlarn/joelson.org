@@ -1,0 +1,34 @@
+name: CI/CD prod
+
+on:
+  push:
+    branches: main
+
+jobs:
+  deploy:
+    name: Deploy to prod
+    runs-on: ubuntu-latest
+    needs: test-php
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 7.4
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.PROD_SSH_KNOWN_HOSTS }}
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Get Deployer version
+        run: vendor/bin/dep -V
+      - name: Deploy to server
+        run: vendor/bin/dep deploy prod -vvv
+        env:
+          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          SSH_USER: ${{ secrets.PROD_SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
+          DEPLOY_CHOWN: ${{ secrets.PROD_DEPLOY_CHOWN }}
